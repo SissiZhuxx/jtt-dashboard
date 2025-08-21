@@ -1,4 +1,4 @@
-# dashboard_app.py (最终版)
+# dashboard_app.py (最终字体修正版)
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -13,13 +13,21 @@ st.set_page_config(layout="wide", page_title="交团团经营分析看板")
 st.title('交团团经营分析看板')
 
 # --- 加载中文字体 ---
-# Streamlit Cloud/Windows/macOS have different font paths. This is a basic setup.
-# For best results, ensure a common Chinese font like SimHei is available.
-try:
-    plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei']
-    plt.rcParams['axes.unicode_minus'] = False
-except Exception:
-    st.warning("中文字体加载失败，图表中的中文可能无法正常显示。")
+@st.cache_resource
+def load_custom_font():
+    # 告诉 Matplotlib 使用 Streamlit Cloud 安装的开源中文字体
+    try:
+        fm.fontManager.addfont('/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc')
+        plt.rcParams['font.sans-serif'] = ['WenQuanYi Zen Hei']
+        plt.rcParams['axes.unicode_minus'] = False
+        st.success("中文字体加载成功！")
+    except Exception as e:
+        st.warning(f"加载系统字体失败，尝试备用方案。错误: {e}")
+        # 如果系统字体失败，尝试一个通用名称
+        plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'sans-serif']
+        plt.rcParams['axes.unicode_minus'] = False
+
+load_custom_font()
 
 # --- 数据上传与加载 ---
 st.sidebar.header('1. 上传数据文件')
@@ -93,11 +101,13 @@ if uploaded_orders_file and uploaded_products_file:
         col_cat1, col_cat2 = st.columns([1, 2])
         with col_cat1: st.dataframe(category_sales.reset_index().head(10))
         with col_cat2:
-            plot_data = category_sales.head(9)
-            plot_data['其他'] = category_sales[9:].sum()
-            fig2, ax2 = plt.subplots(figsize=(10, 6))
-            plot_data.plot(kind='pie', autopct='%1.1f%%', startangle=90, ax=ax2)
-            ax2.set_title('各商品品类销售额贡献占比'); ax2.set_ylabel(''); st.pyplot(fig2)
+            if not category_sales.empty:
+                plot_data = category_sales.head(9)
+                if len(category_sales) > 9:
+                    plot_data['其他'] = category_sales[9:].sum()
+                fig2, ax2 = plt.subplots(figsize=(10, 6))
+                plot_data.plot(kind='pie', autopct='%1.1f%%', startangle=90, ax=ax2)
+                ax2.set_title('各商品品类销售额贡献占比'); ax2.set_ylabel(''); st.pyplot(fig2)
 
     # 3. 高价值用户分层 (RFM)
     st.header('三、高价值用户分层 (RFM)')
